@@ -1,6 +1,6 @@
 import pandas as pd
-file_path = 'en.openfoodfacts.org.products.cvs'
-df = pd.read_cvs(file_path, sep='\t', usecols=['product_name', 'categories', 'labels', 'ingredients_text'], low_memory=False)
+import networkx as nx
+import matplotlib.pyplot as plt
 
-df_us = df[df['countries'].str.contains('United States', na=False)]
-df
+df = pd.read_csv("en.openfoodfacts.org.products.tsv", sep='t', low_memory=False)
+
