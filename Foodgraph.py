@@ -1,3 +1,4 @@
+# This is the code to a food hierarchy tree graph based on the OpenFoodDataset
 import networkx as nx
 import matplotlib.pyplot as plt
 
