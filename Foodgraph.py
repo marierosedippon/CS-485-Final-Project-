@@ -1,6 +1,8 @@
-# This is the code to a food hierarchy tree graph based on the OpenFoodDataset
 import networkx as nx
 import matplotlib.pyplot as plt
+from collections import deque, defaultdict
+import textwrap
+
 
 # Create a directed graph (tree)
 G = nx.DiGraph()
@@ -27,13 +29,12 @@ def add_nodes_and_edges(parent, children):
         else:
             add_nodes_and_edges(child, categories.get(child, []))  # Recursive call
 
-# Adding the initial structure with root node
+# Build the graph from the root
 for parent, children in categories[root]:
-    G.add_edge(root, parent)  # Connect each category to the root node
+    G.add_edge(root, parent)
     add_nodes_and_edges(parent, children)
 
-# Now, we have a tree structure with a single root node and varying numbers of subcategories:
-# Adding more levels for tree depth and variety
+# Add detailed subcategories
 G.add_edges_from([
     ('Chips', 'Potato Chips'),
     ('Chips', 'Tortilla Chips'),
@@ -111,14 +112,94 @@ G.add_edges_from([
     ('Porridge', 'Rice Pudding')
 ])
 
-# Draw the tree graph using graphviz_layout for a tree structure
+# ----- Algorithms and Analysis -----
+
+# 1. Path tracing (root to a leaf)
+def trace_path(product):
+    path = nx.shortest_path(G, root, product)
+    return " → ".join(path)
+
+print("\nPath Tracing Example:")
+print(trace_path("Tortilla Chips"))
+
+# 2. DFS: Get max depth from each main category
+def get_max_depth_from(node):
+    leaf_depths = []
+    for leaf in G.nodes:
+        if nx.has_path(G, node, leaf) and G.out_degree(leaf) == 0:
+            try:
+                leaf_depths.append(len(nx.shortest_path(G, node, leaf)) - 1)
+            except nx.NetworkXNoPath:
+                continue
+    return max(leaf_depths) if leaf_depths else 0
+
+max_depths = {cat: get_max_depth_from(cat) for cat in G.successors(root)}
+
+print("\nMax Depths of Main Categories:")
+for cat, depth in max_depths.items():
+    print(f"{cat}: {depth}")
+
+# 3. BFS Level Count: Count number of nodes at each level of the tree
+def bfs_level_count(graph, root):
+    level_counts = defaultdict(int)
+    visited = set()
+    queue = deque([(root, 0)])  # (node, depth)
+
+    while queue:
+        current, depth = queue.popleft()
+        if current in visited:
+            continue
+        visited.add(current)
+        level_counts[depth] += 1
+        for neighbor in graph.successors(current):
+            queue.append((neighbor, depth + 1))
+    
+    return dict(level_counts)
+
+# Run BFS level count
+level_distribution = bfs_level_count(G, root)
+
+# Print the result
+print("\nBFS Level Node Count:")
+for level in sorted(level_distribution):
+    print(f"Level {level}: {level_distribution[level]} nodes")
+
+# 4. Subtree size count
+subtree_sizes = {cat: len(nx.descendants(G, cat)) for cat in G.successors(root)}
+top_3 = sorted(subtree_sizes.items(), key=lambda x: x[1], reverse=True)[:3]
+
+print("\nTop 3 Largest Categories by Subtree Size:")
+for cat, size in top_3:
+    print(f"{cat}: {size} nodes")
+
+# ----- Visualization -----
+def wrap_label(label, width=12):
+    return '\n'.join(textwrap.wrap(label, width))
+
+# Create a dictionary with wrapped labels for all nodes
+wrapped_labels = {node: wrap_label(node) for node in G.nodes()}
+
 plt.figure(figsize=(12, 12))
-pos = nx.nx_agraph.graphviz_layout(G, prog="dot")  # This ensures a tree-like structure
-nx.draw(G, pos, with_labels=True, node_size=3000, node_color='lightblue', font_size=10, font_weight='bold', alpha=0.7, width=2)
+pos = nx.nx_agraph.graphviz_layout(G, prog="dot")
+
+nx.draw(
+    G,
+    pos,
+    labels=wrapped_labels,
+    with_labels=True,
+    node_size=3000,
+    node_color='lightblue',
+    font_size=10,
+    font_weight='bold',
+    alpha=0.7,
+    width=2
+)
+
 plt.title('Food Categories Hierarchy', fontsize=15)
-plt.tight_layout()  # Ensures proper layout without overlap
+plt.tight_layout()
 plt.show()
 
-# Print number of nodes and edges
-print(f"Number of nodes: {len(G.nodes)}")
+
+# Summary stats
+print(f"\nNumber of nodes: {len(G.nodes)}")
 print(f"Number of edges: {len(G.edges)}")
